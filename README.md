@@ -88,3 +88,4 @@ modules/(insert name here)/filament/(insert name here)PanelProvider.php
             )
 
 You may have to change what it gives you to this, your mileage may vary
+
