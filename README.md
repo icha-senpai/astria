@@ -61,31 +61,27 @@ Access the admin panel at:
 
 ## Creating a Module
 
-Use the Astria module generator:
+--one time--
 
-php artisan astria:module {Name}
-This scaffolds:
+php artisan astria:make-core
+php artisan optimize:clear
+php artisan serve
+--visit /admin and /core-ping
 
-modules/Name/
-  module.php
-  Providers/...
-  Filament/...
-  routes/...
-  resources/...
+--create a module--
 
-## Side note
+php artisan astria:module Blog
+php artisan optimize:clear
+php artisan serve
+-- visit /blog-ping
 
-modules/(insert name here)/filament/(insert name here)PanelProvider.php
+--add a Filament Page to Blog--
 
-            // 👇 discover ALL module resources & pages
-            ->discoverResources(
-                in: base_path('modules'),
-                for: 'Modules'
-            )
-            ->discoverPages(
-                in: base_path('modules'),
-                for: 'Modules'
-            )
+php artisan astria:make:page Blog Dashboard
 
-You may have to change what it gives you to this, your mileage may vary
+--add a CRUD Resource to Blog--
 
+php artisan astria:make:resource Blog Post
+php artisan migrate
+
+--open /admin → Blog → Posts

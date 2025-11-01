@@ -15,19 +15,10 @@ class CorePanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->brandName('Astria Admin')
-
-            // 👇 discover ALL module resources & pages
-            ->discoverResources(
-                in: base_path('modules'),
-                for: 'Modules'
-            )
-            ->discoverPages(
-                in: base_path('modules'),
-                for: 'Modules'
-            )
-
-            ->pages([
-                Dashboard::class,
-            ]);
+            // Discover ALL modules’ Filament bits
+            ->discoverResources(in: base_path('modules'), for: 'Modules')
+            ->discoverPages(in: base_path('modules'), for: 'Modules')
+            ->colors(['primary' => '#00eaff'])
+            ->pages([Dashboard::class]);
     }
 }
