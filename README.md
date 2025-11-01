@@ -72,3 +72,19 @@ modules/Name/
   Filament/...
   routes/...
   resources/...
+
+## Side note
+
+modules/(insert name here)/filament/(insert name here)PanelProvider.php
+
+            // 👇 discover ALL module resources & pages
+            ->discoverResources(
+                in: base_path('modules'),
+                for: 'Modules'
+            )
+            ->discoverPages(
+                in: base_path('modules'),
+                for: 'Modules'
+            )
+
+You may have to change what it gives you to this, your mileage may vary
