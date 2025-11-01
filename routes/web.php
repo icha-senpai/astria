@@ -24,4 +24,7 @@ Route::get('/astria-debug-panels', function () {
         'class' => get_class($p),
         'brand' => method_exists($p, 'getBrandName') ? $p->getBrandName() : null,
     ])->values();
+
+Route::get('/core-ping', fn() => 'Core module online');
+
 });

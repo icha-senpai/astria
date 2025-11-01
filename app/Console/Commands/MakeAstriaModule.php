@@ -11,73 +11,101 @@ class MakeAstriaModule extends Command
     protected $signature = 'astria:module {name}';
     protected $description = 'Create a new Astria module';
 
-    public function handle()
+    public function handle(): int
     {
         $name = Str::studly($this->argument('name'));
-        $modulePath = base_path("modules/{$name}");
+        $slug = Str::kebab($name);
+        $base = base_path("modules/{$name}");
 
-        if (File::exists($modulePath)) {
-            $this->error("Module {$name} already exists!");
-            return;
+        if (is_dir($base)) {
+            $this->error("Module {$name} already exists.");
+            return self::FAILURE;
         }
 
-        // Create folders
-        File::makeDirectory($modulePath);
-        File::makeDirectory("{$modulePath}/Routes", 0755, true);
-        File::makeDirectory("{$modulePath}/Database/migrations", 0755, true);
-        File::makeDirectory("{$modulePath}/Resources/views", 0755, true);
-        File::makeDirectory("{$modulePath}/Providers", 0755, true);
+        $dirs = [
+            "{$base}/routes",
+            "{$base}/resources/views",
+            "{$base}/database/migrations",
+            "{$base}/Filament/Pages",
+            "{$base}/Filament/Resources",
+            "{$base}/Providers",
+        ];
+        foreach ($dirs as $dir) {
+            File::makeDirectory($dir, 0755, true);
+        }
 
-        // Manifest
-        $manifest = <<<PHP
+        File::put("{$base}/module.php", <<<PHP
 <?php
 
 return [
-    'name' => '{$name}',
+    'name'    => '{$slug}',
     'version' => '0.0.1',
     'enabled' => true,
+
     'providers' => [
         Modules\\{$name}\\Providers\\{$name}ServiceProvider::class,
+        Modules\\{$name}\\Filament\\{$name}PanelProvider::class,
     ],
 ];
-PHP;
+PHP);
 
-        File::put("{$modulePath}/module.php", $manifest);
-
-        // Provider stub (NOWDOC template)
-        $providerStub = <<<'PHP'
+        File::put("{$base}/routes/web.php", <<<PHP
 <?php
 
-namespace Modules\__NAME__\Providers;
+use Illuminate\\Support\\Facades\\Route;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\File;
+Route::get('/{$slug}-ping', fn() => '{$name} module online');
+PHP);
 
-class __NAME__ServiceProvider extends ServiceProvider
+        File::put("{$base}/Providers/{$name}ServiceProvider.php", <<<PHP
+<?php
+
+namespace Modules\\{$name}\\Providers;
+
+use Illuminate\\Support\\ServiceProvider;
+
+class {$name}ServiceProvider extends ServiceProvider
 {
-    public function boot(): void
+    public function register(): void {}
+    public function boot(): void {}
+}
+PHP);
+
+        File::put("{$base}/Filament/{$name}PanelProvider.php", <<<PHP
+<?php
+
+namespace Modules\\{$name}\\Filament;
+
+use Filament\\Panel;
+use Filament\\PanelProvider;
+use Filament\\Pages\\Dashboard;
+
+class {$name}PanelProvider extends PanelProvider
+{
+    public function panel(Panel \$panel): Panel
     {
-        $modulePath = __DIR__ . '/../';
-
-        if (File::exists($modulePath . 'Routes/web.php')) {
-            $this->loadRoutesFrom($modulePath . 'Routes/web.php');
-        }
-
-        if (File::exists($modulePath . 'Database/migrations')) {
-            $this->loadMigrationsFrom($modulePath . 'Database/migrations');
-        }
-
-        if (File::exists($modulePath . 'Resources/views')) {
-            $this->loadViewsFrom($modulePath . 'Resources/views', strtolower('__NAME__'));
-        }
+        return \$panel
+            ->id('{$slug}')
+            ->path('/{$slug}/admin')
+            ->login()
+            ->brandName('Astria {$name}')
+            ->colors([
+                'primary' => '#00eaff',
+            ])
+            ->discoverResources(
+                in: __DIR__.'/Resources',
+            )
+            ->discoverPages(
+                in: __DIR__.'/Pages',
+            )
+            ->pages([
+                Dashboard::class,
+            ]);
     }
 }
-PHP;
+PHP);
 
-        $provider = str_replace('__NAME__', $name, $providerStub);
-
-        File::put("{$modulePath}/Providers/{$name}ServiceProvider.php", $provider);
-
-        $this->info("Module {$name} created successfully.");
+        $this->info("✅ Module {$name} created at modules/{$name}");
+        return self::SUCCESS;
     }
 }

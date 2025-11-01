@@ -14,11 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-
+        //
     })
-
     ->withProviders([
-        App\Astria\AstriaServiceProvider::class,
+        App\Astria\AstriaServiceProvider::class, // single point of truth
+        App\Providers\AppServiceProvider::class, // normal app stuff
+        // Do NOT register a default Filament panel provider here.
     ])
-
     ->create();

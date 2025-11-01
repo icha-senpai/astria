@@ -2,71 +2,100 @@
 
 namespace App\Astria;
 
-use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
-use Filament\Facades\Filament;
-use Filament\PanelProvider;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\ServiceProvider;
 
 class AstriaServiceProvider extends ServiceProvider
 {
-    public function boot(): void
+    public function register(): void
     {
-        logger("🔥 Astria booting modular panels");
+        // Discover modules under /modules
+        $modulesDir = Astria::modulesPath();
+        if (! is_dir($modulesDir)) {
+            return;
+        }
 
-        $modulesPath = Astria::modulesPath();
-
-        foreach (File::directories($modulesPath) as $moduleDir) {
-            $manifest = $moduleDir . '/module.php';
-
-            if (! File::exists($manifest)) {
+        foreach (File::directories($modulesDir) as $dir) {
+            $name = basename($dir);
+            $configFile = $dir . '/module.php';
+            if (! is_file($configFile)) {
                 continue;
             }
 
-            $config = require $manifest;
+            /** @var array{name?:string,enabled?:bool,providers?:array,autoload?:array,routes?:array,panels?:array} $cfg */
+            $cfg = require $configFile;
 
-            if (($config['enabled'] ?? true) === false) {
+            if (! Arr::get($cfg, 'enabled', true)) {
                 continue;
             }
 
-            // ✅ Step 1: register module providers
-            foreach ($config['providers'] ?? [] as $provider) {
-                $this->app->register($provider);
-            }
-
-            // ✅ Step 2: register Filament panels
-            $filamentPath = $moduleDir . '/Filament';
-
-            if (File::isDirectory($filamentPath)) {
-                foreach (File::allFiles($filamentPath) as $file) {
-                    $class = $this->fileToNamespace($file->getRealPath());
-
-                    if (! class_exists($class)) {
-                        continue;
-                    }
-
-                    // ✅ Only register PanelProviders
-                    if (! is_subclass_of($class, PanelProvider::class)) {
-                        continue;
-                    }
-
-                    Filament::serving(function () use ($class) {
-                        logger("✅ Astria registering panel provider: $class");
-                        Filament::registerPanelProvider(new $class());
-                    });
+            // 1) Register module providers (Laravel & Filament PanelProviders)
+            foreach ((array) Arr::get($cfg, 'providers', []) as $providerClass) {
+                if (class_exists($providerClass)) {
+                    $this->app->register($providerClass);
                 }
             }
+
+            // 2) Optional classmap/psr-4 autoloaders (handy during prototyping)
+            foreach ((array) Arr::get($cfg, 'autoload.classmap', []) as $path) {
+                $this->app->make('files')->requireOnce($dir . '/' . ltrim($path, '/'));
+            }
+
+            // 3) Defer routes; we’ll register in boot() to ensure middleware stack is ready
+            $this->app->instance("astria.module.$name.config", $cfg);
         }
     }
 
-    protected function fileToNamespace($path)
+    public function boot(): void
     {
-        $path = str_replace('\\', '/', $path);
-        $base = str_replace('\\', '/', base_path() . '/modules/');
+        // Bind routes for each enabled module (web & api if present)
+        $modulesDir = Astria::modulesPath();
+        if (! is_dir($modulesDir)) {
+            return;
+        }
 
-        $relative = str_replace($base, '', $path);
-        $relative = str_replace('.php', '', $relative);
-        $relative = str_replace('/', '\\', $relative);
+        foreach (File::directories($modulesDir) as $dir) {
+            $name = basename($dir);
+            /** @var array|null $cfg */
+            $cfg = $this->app->bound("astria.module.$name.config")
+                ? $this->app->get("astria.module.$name.config")
+                : null;
 
-        return "Modules\\{$relative}";
+            if (! $cfg) {
+                continue;
+            }
+
+            // web.php
+            $web = $dir . '/routes/web.php';
+            if (is_file($web)) {
+                Route::middleware('web')->group($web);
+            }
+
+            // api.php
+            $api = $dir . '/routes/api.php';
+            if (is_file($api)) {
+                Route::prefix('api')->middleware('api')->group($api);
+            }
+
+            // views (resources/views)
+            $views = $dir . '/resources/views';
+            if (is_dir($views)) {
+                $this->loadViewsFrom($views, "modules:$name");
+            }
+
+            // migrations (database/migrations)
+            $migrations = $dir . '/database/migrations';
+            if (is_dir($migrations)) {
+                $this->loadMigrationsFrom($migrations);
+            }
+
+            // translations (lang)
+            $lang = $dir . '/lang';
+            if (is_dir($lang)) {
+                $this->loadTranslationsFrom($lang, "modules:$name");
+            }
+        }
     }
 }
