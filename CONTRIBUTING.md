@@ -1,4 +1,6 @@
 
+
+
 # Contributing to Astria
 
 Thank you for considering contributing to Astria!
@@ -66,3 +68,15 @@ We'll review, request updates if needed, and merge when ready.
 ### Questions & Discussion
 
 Use GitHub Issues to discuss architecture, features, and improvements.
+
+
+
+
+## Licensing
+
+Astria is licensed under the **GNU AGPLv3** for open-source and personal use.
+
+**For commercial use** (SaaS, enterprise, closed-source products), a **commercial license** is required.  
+Contact - admin@ichaa.net for terms.
+
+Why? Because Astria is a personal OS for visionaries—not a free SaaS boilerplate for grifters.
