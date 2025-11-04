@@ -85,3 +85,14 @@ php artisan astria:make:resource Blog Post
 php artisan migrate
 
 --open /admin → Blog → Posts
+
+
+
+## Licensing
+
+Astria is licensed under the **GNU AGPLv3** for open-source and personal use.
+
+**For commercial use** (SaaS, enterprise, closed-source products), a **commercial license** is required.  
+Contact - admin@ichaa.net for terms.
+
+Why? Because Astria is a personal OS for visionaries—not a free SaaS boilerplate for grifters.
